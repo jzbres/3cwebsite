@@ -1077,38 +1077,40 @@ function parseCSVLine(line) {
 function csvToLessons(csv) {
   const lines = csv.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,'_'));
+
+  // Normalize headers: lowercase, collapse whitespace to underscore, strip special chars
+  const headers = parseCSVLine(lines[0]).map(h =>
+    h.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+  );
+  console.log('Sheet headers detected:', headers);
   const lessons = [];
 
-  // Helper to get field value by header name
   const get = (row, name) => {
-    const idx = headers.indexOf(name);
+    let idx = headers.indexOf(name);
+    if (idx < 0) idx = headers.findIndex(h => h.includes(name));
     return idx >= 0 ? (row[idx] || '').trim() : '';
   };
 
   lines.slice(1).forEach((line, i) => {
     if (!line.trim()) return;
     const row = parseCSVLine(line);
-    const className = get(row, 'r1_class_name') || get(row, 'class_name') || '';
-    if (!className) return;
 
-    // Handle up to 4 rounds per participant row
+    const session = get(row, 'session') || '';
+    const grade   = get(row, 'grade') || get(row, 'grade_level') || '';
+    const subject = get(row, 'subject') || get(row, 'subject_area') || '';
+
     for (let r = 1; r <= 4; r++) {
       const cn = get(row, `r${r}_class_name`);
-      const cd = get(row, `r${r}_class_desc`) || get(row, `r${r}_description`);
+      const cd = get(row, `r${r}_class_desc`) || get(row, `r${r}_description`) || '';
       if (!cn) continue;
 
-      const p1skill = get(row, `r${r}_p1_contribution`) || get(row, `r${r}_partner_1_contribution`);
-      const p2skill = get(row, `r${r}_p2_contribution`) || get(row, `r${r}_partner_2_contribution`);
       const p1name  = get(row, `r${r}_partner_1`) || get(row, 'name') || '';
+      const p1skill = get(row, `r${r}_p1_contribution`);
+      const p1cat   = get(row, `r${r}_p1_category`) || 'teach_now';
       const p2name  = get(row, `r${r}_partner_2`) || '';
-      const p1cat   = get(row, `r${r}_p1_category`) || get(row, `r${r}_partner_1_category`) || 'teach_now';
-      const p2cat   = get(row, `r${r}_p2_category`) || get(row, `r${r}_partner_2_category`) || 'teach_now';
-      const session = get(row, 'session') || '';
-      const grade   = get(row, 'grade') || get(row, 'grade_level') || '';
-      const subject = get(row, 'subject') || get(row, 'subject_area') || '';
+      const p2skill = get(row, `r${r}_p2_contribution`);
+      const p2cat   = get(row, `r${r}_p2_category`) || 'teach_now';
 
-      // Build tags from all skills and session info
       const rawTags = [p1skill, p2skill, cn]
         .join(' ').toLowerCase()
         .replace(/[^a-z0-9\s&]/g, '')
@@ -1116,9 +1118,10 @@ function csvToLessons(csv) {
         .filter(w => w.length > 3 && !['with','from','that','this','into','and','for','the','are','was','were'].includes(w));
       const tags = [...new Set(rawTags)];
 
-      // Check if this lesson id already exists (dedup across participant rows)
       const lid = `${session}-r${r}-${cn.replace(/\s+/g,'').slice(0,8).toLowerCase()}`;
       if (lessons.find(x => x.id === lid)) continue;
+
+      console.log(`Loaded: [${session}] R${r} — ${cn}`);
 
       lessons.push({
         id: lid,
@@ -1132,6 +1135,7 @@ function csvToLessons(csv) {
       });
     }
   });
+  console.log(`Total lessons loaded: ${lessons.length}`);
   return lessons;
 }
 
