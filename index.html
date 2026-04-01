@@ -1149,6 +1149,7 @@ function normalizeCat(raw) {
 }
 
 async function loadFromSheet() {
+  console.log('loadFromSheet called, SHEET_CSV_URL:', SHEET_CSV_URL);
   if (!SHEET_CSV_URL) {
     // No sheet configured — use sample data as-is
     initApp();
@@ -1159,6 +1160,8 @@ async function loadFromSheet() {
     const res = await fetch(SHEET_CSV_URL);
     if (!res.ok) throw new Error('Sheet fetch failed');
     const csv = await res.text();
+    console.log('CSV first 500 chars:', csv.slice(0, 500));
+    console.log('CSV line count:', csv.split(/\r?\n/).length);
     const parsed = csvToLessons(csv);
     if (parsed.length > 0) {
       LESSONS = parsed;
