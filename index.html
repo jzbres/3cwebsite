@@ -1075,11 +1075,38 @@ function parseCSVLine(line) {
 }
 
 function csvToLessons(csv) {
-  const lines = csv.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  // Proper CSV parser that handles multi-line quoted fields
+  function parseCSVFull(text) {
+    const rows = [];
+    let cur = [], field = '', inQ = false, i = 0;
+    while (i < text.length) {
+      const ch = text[i];
+      if (inQ) {
+        if (ch === '"' && text[i+1] === '"') { field += '"'; i += 2; continue; }
+        if (ch === '"') { inQ = false; i++; continue; }
+        field += ch;
+      } else {
+        if (ch === '"') { inQ = true; i++; continue; }
+        if (ch === ',') { cur.push(field); field = ''; i++; continue; }
+        if (ch === '\n' || (ch === '\r' && text[i+1] === '\n')) {
+          cur.push(field); field = '';
+          if (cur.some(c => c)) rows.push(cur);
+          cur = [];
+          if (ch === '\r') i++;
+          i++; continue;
+        }
+        field += ch;
+      }
+      i++;
+    }
+    if (field || cur.length) { cur.push(field); if (cur.some(c => c)) rows.push(cur); }
+    return rows;
+  }
 
-  // Normalize headers: lowercase, collapse whitespace to underscore, strip special chars
-  const headers = parseCSVLine(lines[0]).map(h =>
+  const allRows = parseCSVFull(csv.trim());
+  if (allRows.length < 2) return [];
+
+  const headers = allRows[0].map(h =>
     h.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
   );
   console.log('Sheet headers detected:', headers);
@@ -1088,12 +1115,13 @@ function csvToLessons(csv) {
   const get = (row, name) => {
     let idx = headers.indexOf(name);
     if (idx < 0) idx = headers.findIndex(h => h.includes(name));
-    return idx >= 0 ? (row[idx] || '').trim() : '';
+    if (idx < 0) return '';
+    const val = row[idx] || '';
+    return val.replace(/^\s+|\s+$/g, '');
   };
 
-  lines.slice(1).forEach((line, i) => {
-    if (!line.trim()) return;
-    const row = parseCSVLine(line);
+  allRows.slice(1).forEach((row, i) => {
+    if (!row.some(c => c.trim())) return;
 
     const session = get(row, 'session') || '';
     const grade   = get(row, 'grade') || get(row, 'grade_level') || '';
