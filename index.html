@@ -800,15 +800,7 @@ body {
       <h2 class="modal-title" id="builder-lesson-name"></h2>
       <p style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6;">Answer a few quick questions and Claude will draft a full lesson plan tailored to your classroom.</p>
 
-      <div id="apikey-field" class="builder-field" style="background:var(--amber-light);border:1.5px solid var(--amber-mid);border-radius:12px;padding:14px 16px;">
-        <label class="builder-label" style="color:var(--amber);">Anthropic API Key</label>
-        <p class="builder-hint">Enter your key from <a href="https://console.anthropic.com" target="_blank" style="color:var(--amber);text-decoration:underline;">console.anthropic.com</a>. It will be saved in your browser so you only need to do this once. Leave blank when using inside Claude.ai.</p>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="password" class="builder-input" id="builder-apikey" placeholder="sk-ant-…" style="flex:1;margin:0;" />
-          <button onclick="saveApiKey()" style="padding:10px 14px;background:var(--amber);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">Save</button>
-        </div>
-        <div id="apikey-confirm" style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;display:none;">✓ Key saved</div>
-      </div>
+
 
       <div class="builder-field">
         <label class="builder-label">How long should the lesson take? *</label>
@@ -1457,8 +1449,7 @@ function openLessonBuilder() {
   document.getElementById('builder-standards').value = '';
   document.getElementById('builder-notes').value = '';
   document.getElementById('lesson-plan-output').innerHTML = '';
-  // Pre-fill saved API key
-  document.getElementById('builder-apikey').value = localStorage.getItem('spark-apikey') || '';
+
   showBuilderForm();
   document.getElementById('builder-modal').classList.add('open');
 }
@@ -1564,11 +1555,11 @@ ${standards ? `How this lesson addresses: ${standards}` : 'Suggest 2–3 relevan
 
 Keep the tone warm, practical, and ready to hand directly to a teacher.`;
 
-  const savedKey = localStorage.getItem('spark-apikey') || '';
+  const savedKey = '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';
   if (!savedKey) {
     document.getElementById('builder-step-loading').style.display = 'none';
     document.getElementById('builder-step-form').style.display = 'block';
-    errEl.textContent = 'Please enter your Anthropic API key above to generate a lesson plan.';
+errEl.textContent = 'Could not connect to AI service.';
     return;
   }
   const headers = {
