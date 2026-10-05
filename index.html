@@ -884,6 +884,21 @@ body {
    Replace SHEET_CSV_URL with your published Google Sheet CSV URL.
    See setup guide for instructions.
 ════════════════════════════════ */
+/* ════════════════════════════════
+   LESSON BUILDER
+   Paste the web app URL of the lesson-builder Apps Script here.
+   The API key lives in that script, never in this page.
+════════════════════════════════ */
+const LESSON_BUILDER_URL = 'https://script.google.com/macros/s/AKfycbyPETuawY7oZ_51H3rkBgBsjFAOdE0ElQyTCYXDz1O-yW2GbzV8A4m1KBkWRLNp6-ES/exec';
+
+let loadFailed = false;
+
+/* Escape sheet text before it goes into the page as HTML */
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZ8ya7UGdU3AH9553ewEyrwRK9vW_KJh6kSWPw0zEZ7yFvbL76Y0cFI7qyfbl8xYUe0mdNMwCCPXQV/pub?gid=1415833572&single=true&output=csv'; // ← paste your published CSV URL here
 
 /* ════════════════════════════════
@@ -1047,35 +1062,41 @@ const catMeta = {
 /* ════════════════════════════════
    GOOGLE SHEETS LOADER
 ════════════════════════════════ */
-function parseCSVLine(line) {
-  // Handle quoted fields with commas inside
-  const result = [];
-  let cur = '', inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i+1] === '"') { cur += '"'; i++; }
-      else inQuotes = !inQuotes;
-    } else if (ch === ',' && !inQuotes) {
-      result.push(cur.trim()); cur = '';
-    } else {
-      cur += ch;
-    }
+function parseCSV(text) {
+  // Handles quoted fields containing commas, quotes and line breaks
+  const rows = [];
+  let row = [], cur = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { cur += '"'; i++; }
+        else inQuotes = false;
+      } else cur += ch;
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(cur.trim()); cur = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i+1] === '\n') i++;
+      row.push(cur.trim()); cur = '';
+      rows.push(row); row = [];
+    } else cur += ch;
   }
-  result.push(cur.trim());
-  return result;
+  if (cur !== '' || row.length) { row.push(cur.trim()); rows.push(row); }
+  return rows;
 }
 
 function csvToLessons(csv) {
-  const lines = csv.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  const rows = parseCSV(csv.trim());
+  if (rows.length < 2) return [];
 
   // Normalize headers: lowercase, collapse whitespace to underscore, strip special chars
-  const headers = parseCSVLine(lines[0]).map(h =>
+  const headers = rows[0].map(h =>
     h.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
   );
-  console.log('Sheet headers detected:', headers);
   const lessons = [];
+  const seen = new Set();
 
   const get = (row, name) => {
     let idx = headers.indexOf(name);
@@ -1083,9 +1104,8 @@ function csvToLessons(csv) {
     return idx >= 0 ? (row[idx] || '').trim() : '';
   };
 
-  lines.slice(1).forEach((line, i) => {
-    if (!line.trim()) return;
-    const row = parseCSVLine(line);
+  rows.slice(1).forEach(row => {
+    if (!row.some(c => c)) return;
 
     const session = get(row, 'session') || '';
     const grade   = get(row, 'grade') || get(row, 'grade_level') || '';
@@ -1110,10 +1130,15 @@ function csvToLessons(csv) {
         .filter(w => w.length > 3 && !['with','from','that','this','into','and','for','the','are','was','were'].includes(w));
       const tags = [...new Set(rawTags)];
 
-      const lid = `${session}-r${r}-${cn.replace(/\s+/g,'').slice(0,8).toLowerCase()}`;
-      if (lessons.find(x => x.id === lid)) continue;
+      // Both partners' rows carry the same class, so skip exact repeats...
+      const dupKey = `${session}|${r}|${cn.toLowerCase().replace(/\s+/g, ' ')}`;
+      if (seen.has(dupKey)) continue;
+      seen.add(dupKey);
+      // ...but keep different classes whose names merely start the same way
+      const baseId = `${session}-r${r}-${cn.replace(/\s+/g,'').slice(0,8).toLowerCase()}`;
+      let lid = baseId, n = 2;
+      while (lessons.find(x => x.id === lid)) lid = `${baseId}-${n++}`;
 
-      console.log(`Loaded: [${session}] R${r} — ${cn}`);
 
       lessons.push({
         id: lid,
@@ -1127,7 +1152,6 @@ function csvToLessons(csv) {
       });
     }
   });
-  console.log(`Total lessons loaded: ${lessons.length}`);
   return lessons;
 }
 
@@ -1141,7 +1165,6 @@ function normalizeCat(raw) {
 }
 
 async function loadFromSheet() {
-  console.log('loadFromSheet called, SHEET_CSV_URL:', SHEET_CSV_URL);
   if (!SHEET_CSV_URL) {
     // No sheet configured — use sample data as-is
     initApp();
@@ -1152,14 +1175,12 @@ async function loadFromSheet() {
     const res = await fetch(SHEET_CSV_URL);
     if (!res.ok) throw new Error('Sheet fetch failed');
     const csv = await res.text();
-    console.log('CSV first 500 chars:', csv.slice(0, 500));
-    console.log('CSV line count:', csv.split(/\r?\n/).length);
     const parsed = csvToLessons(csv);
-    if (parsed.length > 0) {
-      LESSONS = parsed;
-    }
+    LESSONS = parsed;
   } catch(e) {
-    console.warn('Could not load Google Sheet — using sample data.', e);
+    console.warn('Could not load Google Sheet.', e);
+    LESSONS = [];
+    loadFailed = true;
   }
   showLoadingBanner(false);
   initApp();
@@ -1177,7 +1198,19 @@ function showLoadingBanner(show) {
   el.style.display = show ? 'block' : 'none';
 }
 
+/* "Maria Elena Gonzalez" → "Maria G." — shows a real person without identifying them */
+function shortName(full) {
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+  while (parts.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(parts[parts.length - 1])) parts.pop();
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  const initial = parts[parts.length - 1].replace(/[^\p{L}]/gu, '').charAt(0).toUpperCase();
+  return initial ? `${parts[0]} ${initial}.` : parts[0];
+}
+
 function initApp() {
+  // Full names never reach the screen, the search, or the lesson builder
+  LESSONS.forEach(l => { l.p1_name = shortName(l.p1_name); l.p2_name = shortName(l.p2_name); });
   renderPopularTags();
   onSearch();
   updateSavedFab();
@@ -1216,8 +1249,8 @@ function renderPopularTags() {
       });
       const topCat = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0]?.[0] || 'teach_now';
       const dotColor = { teach_now:'#c96a1a', teach_prep:'#1e6b65', elder:'#b83838', childhood:'#3848a0' }[topCat] || '#78716c';
-      return `<span class="skill-tag${activeTag===tag?' active':''}" onclick="toggleTag('${tag}')">
-        <span class="cat-dot" style="background:${dotColor}"></span>${tag}
+      return `<span class="skill-tag${activeTag===tag?' active':''}" data-tag="${esc(tag)}" onclick="toggleTag(this.dataset.tag)">
+        <span class="cat-dot" style="background:${dotColor}"></span>${esc(tag)}
       </span>`;
     }).join('');
 }
@@ -1271,6 +1304,23 @@ function onSearch() {
 
 function renderResults(results, saved) {
   const grid = document.getElementById('results-grid');
+  if (loadFailed) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">⚠️</div>
+      <h3>Couldn't load the lessons</h3>
+      <p>The library couldn't reach its database just now. Please try again in a few minutes.</p>
+      <p style="margin-top:14px;"><button onclick="location.reload()" style="padding:10px 20px;border-radius:10px;border:1.5px solid currentColor;background:transparent;font:inherit;font-weight:600;cursor:pointer;">Try again</button></p>
+    </div>`;
+    return;
+  }
+  if (LESSONS.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">✦</div>
+      <h3>No lessons yet</h3>
+      <p>Lessons will show up here after the next Spark Round session.</p>
+    </div>`;
+    return;
+  }
   if (results.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-icon">🔍</div>
@@ -1282,22 +1332,22 @@ function renderResults(results, saved) {
 
   grid.innerHTML = results.map((l, i) => {
     const isSaved = saved.includes(l.id);
-    return `<div class="lesson-card" style="animation-delay:${i*0.04}s" onclick="openLesson('${l.id}')">
+    return `<div class="lesson-card" style="animation-delay:${i*0.04}s" data-id="${esc(l.id)}" onclick="openLesson(this.dataset.id)">
       <div class="lesson-card-header">
-        <div class="lesson-title">${l.class_name}</div>
-        <button class="save-btn${isSaved?' saved':''}" onclick="event.stopPropagation();toggleSave('${l.id}')" title="${isSaved?'Unsave':'Save'} lesson">
+        <div class="lesson-title">${esc(l.class_name)}</div>
+        <button class="save-btn${isSaved?' saved':''}" data-id="${esc(l.id)}" onclick="event.stopPropagation();toggleSave(this.dataset.id)" title="${isSaved?'Unsave':'Save'} lesson">
           ${isSaved ? '♥' : '♡'}
         </button>
       </div>
-      <div class="lesson-desc">${l.class_desc}</div>
+      <div class="lesson-desc">${esc(l.class_desc)}</div>
       <div class="lesson-skills">
-        <span class="skill-chip chip-${l.p1_category}">${l.p1_skill}</span>
-        <span class="skill-chip chip-${l.p2_category}">${l.p2_skill}</span>
+        <span class="skill-chip chip-${l.p1_category}">${esc(l.p1_skill)}</span>
+        <span class="skill-chip chip-${l.p2_category}">${esc(l.p2_skill)}</span>
       </div>
       <div class="lesson-meta">
-        <span class="meta-pill grade">🎓 ${l.grade}</span>
-        <span class="meta-pill subject">📚 ${l.subject}</span>
-        <span class="meta-pill session">✦ Round ${l.round}</span>
+        <span class="meta-pill grade">🎓 ${esc(l.grade)}</span>
+        <span class="meta-pill subject">📚 ${esc(l.subject)}</span>
+        <span class="meta-pill session">✦ Round ${esc(l.round)}</span>
       </div>
     </div>`;
   }).join('');
@@ -1323,24 +1373,24 @@ function openLesson(id) {
   ].map(s => {
     const m = catMeta[s.cat] || catMeta.wildcard;
     return `<span class="modal-skill-item" style="background:${m.bg};color:${m.color}">
-      ${s.skill} <small style="opacity:0.7;font-weight:400">· ${m.label}</small>
+      ${esc(s.skill)} <small style="opacity:0.7;font-weight:400">· ${m.label}</small>
     </span>`;
   }).join('');
 
   document.getElementById('modal-contributors').innerHTML = `
     <div class="contributor-row">
-      <div class="contributor-name">${l.p1_name}</div>
-      <div class="contributor-skill">${l.p1_skill}</div>
+      <div class="contributor-name">${esc(l.p1_name)}</div>
+      <div class="contributor-skill">${esc(l.p1_skill)}</div>
     </div>
     <div class="contributor-row">
-      <div class="contributor-name">${l.p2_name}</div>
-      <div class="contributor-skill">${l.p2_skill}</div>
+      <div class="contributor-name">${esc(l.p2_name)}</div>
+      <div class="contributor-skill">${esc(l.p2_skill)}</div>
     </div>`;
 
   document.getElementById('modal-meta').innerHTML = `
-    <span class="meta-pill grade">🎓 Grade ${l.grade}</span>
-    <span class="meta-pill subject">📚 ${l.subject}</span>
-    <span class="meta-pill session">✦ Session: ${l.session}</span>`;
+    <span class="meta-pill grade">🎓 Grade ${esc(l.grade)}</span>
+    <span class="meta-pill subject">📚 ${esc(l.subject)}</span>
+    <span class="meta-pill session">✦ Session: ${esc(l.session)}</span>`;
 
   const saveBtn = document.getElementById('modal-save-btn');
   saveBtn.textContent = isSaved ? '♥ Saved' : '♥ Save this lesson';
@@ -1412,12 +1462,12 @@ function renderDrawer() {
   }
   const lessons = LESSONS.filter(l => saved.includes(l.id));
   el.innerHTML = lessons.map(l => `
-    <div class="drawer-lesson" onclick="openLesson('${l.id}');closeDrawer()">
-      <button class="drawer-remove" onclick="event.stopPropagation();toggleSave('${l.id}')" title="Remove">✕</button>
-      <div class="drawer-lesson-title">${l.class_name}</div>
+    <div class="drawer-lesson" data-id="${esc(l.id)}" onclick="openLesson(this.dataset.id);closeDrawer()">
+      <button class="drawer-remove" data-id="${esc(l.id)}" onclick="event.stopPropagation();toggleSave(this.dataset.id)" title="Remove">✕</button>
+      <div class="drawer-lesson-title">${esc(l.class_name)}</div>
       <div class="drawer-lesson-chips">
-        <span class="skill-chip chip-${l.p1_category}" style="font-size:11px;">${l.p1_skill}</span>
-        <span class="skill-chip chip-${l.p2_category}" style="font-size:11px;">${l.p2_skill}</span>
+        <span class="skill-chip chip-${l.p1_category}" style="font-size:11px;">${esc(l.p1_skill)}</span>
+        <span class="skill-chip chip-${l.p2_category}" style="font-size:11px;">${esc(l.p2_skill)}</span>
       </div>
     </div>
   `).join('');
@@ -1427,14 +1477,6 @@ function renderDrawer() {
    LESSON BUILDER
 ════════════════════════════════ */
 let selectedDuration = '';
-
-function saveApiKey() {
-  const key = document.getElementById('builder-apikey').value.trim();
-  localStorage.setItem('spark-apikey', key);
-  const confirm = document.getElementById('apikey-confirm');
-  confirm.style.display = 'block';
-  setTimeout(() => confirm.style.display = 'none', 2500);
-}
 
 function openLessonBuilder() {
   if (!openLessonId) return;
@@ -1496,99 +1538,31 @@ async function generateLessonPlan() {
   document.getElementById('builder-step-form').style.display = 'none';
   document.getElementById('builder-step-loading').style.display = 'block';
 
-  const catLabels = {
-    teach_now:  'Expert Knowledge (something they can teach right now)',
-    teach_prep: 'Knowledge with Prep (deep interest, not expert)',
-    elder:      'Ancestral / Elder Knowledge (passed down through family)',
-    childhood:  'Childhood Passion (something they loved as a kid)',
-    wildcard:   'Wild Card'
-  };
-
-  const prompt = `You are an expert curriculum designer helping a teacher build a creative, community-rooted lesson plan.
-
-The lesson idea was generated during a "Spark Round" — a collaborative activity where community members paired their personal skills and knowledge to brainstorm original class ideas for students.
-
-## Lesson Concept
-**Title:** ${l.class_name}
-**Description:** ${l.class_desc}
-**Grade Level:** ${l.grade}
-**Subject Area:** ${l.subject}
-
-## Community Contributors
-- **${l.p1_name}** contributed: "${l.p1_skill}" (${catLabels[l.p1_category] || l.p1_category})
-- **${l.p2_name}** contributed: "${l.p2_skill}" (${catLabels[l.p2_category] || l.p2_category})
-
-## Teacher's Parameters
-- **Lesson duration:** ${duration}
-${standards ? `- **Standards to address:** ${standards}` : '- **Standards:** No specific standards provided — use your best judgment for the grade level and subject.'}
-${notes ? `- **Additional context:** ${notes}` : ''}
-
-## Your Task
-Write a complete, ready-to-use lesson plan draft with these sections:
-
-## Overview
-A 2–3 sentence summary of the lesson and its community connection.
-
-## Learning Objectives
-3–5 clear, measurable objectives.
-
-## Materials Needed
-A practical list, noting what the community contributor might bring.
-
-## Lesson Outline
-A timed sequence filling the full ${duration}. Include:
-- Warm-up / hook (tied to the contributor's background)
-- Main activity or activities
-- Reflection or closing
-
-## Community Contributor Role
-How the guest participates — what they share, demonstrate, or lead.
-
-## Assessment Ideas
-1–2 simple ways to check for understanding.
-
-## Standards Alignment
-${standards ? `How this lesson addresses: ${standards}` : 'Suggest 2–3 relevant standards this lesson could address.'}
-
-## Extension Ideas
-1–2 optional extensions for students who want to go deeper.
-
-Keep the tone warm, practical, and ready to hand directly to a teacher.`;
-
-  const savedKey = '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';
-  if (!savedKey) {
+  if (!LESSON_BUILDER_URL) {
     document.getElementById('builder-step-loading').style.display = 'none';
     document.getElementById('builder-step-form').style.display = 'block';
-errEl.textContent = 'Could not connect to AI service.';
+    errEl.textContent = 'The lesson builder is not set up yet.';
     return;
   }
-  const headers = {
-    'Content-Type': 'application/json',
-    'anthropic-version': '2023-06-01',
-    'x-api-key': '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'
-  };
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // The request goes to our own Apps Script, which holds the API key privately
+    const response = await fetch(LESSON_BUILDER_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }]
+        action: 'lessonPlan',
+        lesson: {
+          class_name: l.class_name, class_desc: l.class_desc, grade: l.grade, subject: l.subject,
+          p1_name: l.p1_name, p1_skill: l.p1_skill, p1_category: l.p1_category,
+          p2_name: l.p2_name, p2_skill: l.p2_skill, p2_category: l.p2_category
+        },
+        duration, standards, notes
       })
     });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const msg = errData?.error?.message || 'Request failed (' + response.status + ')';
-      if (response.status === 401) throw new Error('Invalid API key — double-check the key entered above.');
-      throw new Error(msg);
-    }
-
     const data = await response.json();
-    const text = data.content?.map(b => b.text || '').join('') || '';
-    if (!text) throw new Error('No response received.');
+    if (data.status !== 'ok' || !data.text) throw new Error(data.message || 'Something went wrong generating the lesson plan. Please try again.');
+    const text = data.text;
 
     document.getElementById('builder-step-loading').style.display = 'none';
     document.getElementById('builder-step-result').style.display = 'block';
