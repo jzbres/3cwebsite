@@ -848,7 +848,9 @@ body {
           <div class="modal-eyebrow">✦ Lesson Plan Draft</div>
           <h2 class="modal-title" style="margin-bottom:0;" id="builder-result-title"></h2>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="builder-copy-btn" onclick="downloadLessonPlan()">⬇ Download</button>
+          <button class="builder-copy-btn" onclick="printLessonPlan()">Print</button>
           <button class="builder-copy-btn" onclick="copyLessonPlan()" id="copy-btn">Copy</button>
           <button class="builder-regen-btn" onclick="showBuilderForm()">← Edit & Regenerate</button>
         </div>
@@ -1584,21 +1586,62 @@ async function generateLessonPlan() {
 }
 
 function renderMarkdown(text) {
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  const inline = t => esc(t)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^---$/gm, '<hr>')
-    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[^<]*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/\n\n+/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/^(?!<[hup\/<])(.+)$/gm, '<p>$1</p>')
-    .replace(/<p><\/p>/g, '');
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>');
+  const out = [];
+  let list = null, para = [];
+  const closePara = () => { if (para.length) { out.push('<p>' + para.join('<br>') + '</p>'); para = []; } };
+  const closeList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+  const openList = kind => { closePara(); if (list !== kind) { closeList(); out.push('<' + kind + '>'); list = kind; } };
+  String(text || '').split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    let m;
+    if (!line) { closePara(); closeList(); }
+    else if ((m = line.match(/^(#{1,3})\s+(.+)$/))) { closePara(); closeList(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+    else if (/^(-{3,}|\*{3,})$/.test(line)) { closePara(); closeList(); out.push('<hr>'); }
+    else if ((m = line.match(/^[-•*]\s+(.+)$/))) { openList('ul'); out.push('<li>' + inline(m[1]) + '</li>'); }
+    else if ((m = line.match(/^\d+[.)]\s+(.+)$/))) { openList('ol'); out.push('<li>' + inline(m[1]) + '</li>'); }
+    else { closeList(); para.push(inline(line)); }
+  });
+  closePara(); closeList();
+  return out.join('\n');
+}
+
+/* The plan as a stand-alone document, used for both download and print */
+function lessonPlanDocument() {
+  const title = document.getElementById('builder-result-title').textContent.trim() || 'Lesson Plan';
+  const body = document.getElementById('lesson-plan-output').innerHTML;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11.5pt; line-height: 1.45; color: #222; max-width: 7in; margin: 0.5in auto; }
+  h1 { font-size: 20pt; margin: 0 0 12pt; }
+  h2 { font-size: 14pt; margin: 16pt 0 6pt; border-bottom: 1px solid #bbb; padding-bottom: 3pt; }
+  h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+  p { margin: 0 0 8pt; } ul, ol { margin: 4pt 0 8pt; padding-left: 20pt; } li { margin-bottom: 3pt; }
+</style></head><body><h1>${esc(title)}</h1>${body}</body></html>`;
+  return { title, html };
+}
+
+/* Saves the plan as a file that opens in Word, Google Docs or Pages */
+function downloadLessonPlan() {
+  const { title, html } = lessonPlanDocument();
+  const name = (title.replace(/[^\p{L}\p{N} _-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Lesson Plan') + ' - Lesson Plan.doc';
+  const url = URL.createObjectURL(new Blob(['\ufeff', html], { type: 'application/msword' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* Opens just the plan in a new tab and brings up the print window (which can also save a PDF) */
+function printLessonPlan() {
+  const { html } = lessonPlanDocument();
+  const w = window.open('', '_blank');
+  if (!w) { alert('Your browser blocked the print window. Please allow pop-ups for this page and try again.'); return; }
+  w.document.write(html); w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
 }
 
 function copyLessonPlan() {
