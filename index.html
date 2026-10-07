@@ -605,6 +605,18 @@ body {
   cursor: pointer;
   transition: all 0.15s;
 }
+.check-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.check-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+.check-chip input { width: 16px; height: 16px; margin: 0; accent-color: var(--amber); cursor: pointer; }
+.check-chip:has(input:checked) { background: var(--amber-light); border-color: var(--amber); font-weight: 700; }
 .duration-btn:hover { border-color: var(--amber-mid); color: var(--amber); }
 .duration-btn.selected { background: var(--amber-light); border-color: var(--amber); color: var(--amber); font-weight: 700; }
 
@@ -812,6 +824,31 @@ body {
           <button class="duration-btn" onclick="selectDuration(this,'2 hours')">2 hours</button>
         </div>
         <input type="text" class="builder-input" id="builder-duration-custom" placeholder="Or type a custom duration…" oninput="clearDurationBtns()" />
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label">What grade level is this for?</label>
+        <p class="builder-hint">Check one or more.</p>
+        <div class="check-options">
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="K"> K</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="1"> 1st</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="2"> 2nd</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="3"> 3rd</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="4"> 4th</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="5"> 5th</label>
+        </div>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label">What materials do you want created?</label>
+        <p class="builder-hint">e.g. a vocabulary worksheet, flashcards, a word search, a crossword puzzle. Claude will write these out after the lesson plan.</p>
+        <textarea class="builder-textarea" id="builder-materials" rows="2" maxlength="600" placeholder="Optional — list the student materials you'd like…"></textarea>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label">Who do you need to differentiate for?</label>
+        <p class="builder-hint">e.g. English language learners, students reading below grade level, advanced learners, students who need movement breaks. Describe needs, not names.</p>
+        <textarea class="builder-textarea" id="builder-differentiate" rows="2" maxlength="600" placeholder="Optional — describe the learners you're planning for…"></textarea>
       </div>
 
       <div class="builder-field">
@@ -1492,6 +1529,12 @@ function openLessonBuilder() {
   document.getElementById('builder-duration-custom').value = '';
   document.getElementById('builder-standards').value = '';
   document.getElementById('builder-notes').value = '';
+  document.getElementById('builder-materials').value = '';
+  document.getElementById('builder-differentiate').value = '';
+  // Pre-check the grade if the sheet has one for this lesson (K–5 only)
+  const g = String(l.grade || '').trim().toLowerCase();
+  const sheetGrade = /^k/.test(g) ? 'K' : ((g.match(/^(?:grade\s*)?([1-5])(?:st|nd|rd|th)?$/) || [])[1] || '');
+  document.querySelectorAll('.builder-grade').forEach(c => { c.checked = c.value === sheetGrade; });
   document.getElementById('lesson-plan-output').innerHTML = '';
 
   showBuilderForm();
@@ -1526,6 +1569,9 @@ async function generateLessonPlan() {
   const duration = selectedDuration || customDuration;
   const standards = document.getElementById('builder-standards').value.trim();
   const notes = document.getElementById('builder-notes').value.trim();
+  const grades = [...document.querySelectorAll('.builder-grade:checked')].map(c => c.value);
+  const materials = document.getElementById('builder-materials').value.trim();
+  const differentiate = document.getElementById('builder-differentiate').value.trim();
   const errEl = document.getElementById('builder-error');
 
   if (!duration) {
@@ -1559,7 +1605,7 @@ async function generateLessonPlan() {
           p1_name: l.p1_name, p1_skill: l.p1_skill, p1_category: l.p1_category,
           p2_name: l.p2_name, p2_skill: l.p2_skill, p2_category: l.p2_category
         },
-        duration, standards, notes
+        duration, standards, notes, grades, materials, differentiate
       })
     });
     const raw = await response.text();
