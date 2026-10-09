@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>3C Teacher Portal</title>
+<style>
+:root {
+  --bg: #f7f3ee; --ink: #1a1612; --muted: #6f6459; --border: #ddd5c8; --card: #ffffff;
+  --amber: #d47c2a; --amber-light: #f5e6cc; --amber-dark: #a85e18;
+  --teal: #2a7c78; --teal-light: #cceae8;
+  --rose: #c94040; --rose-light: #f5d4d4;
+  --indigo: #3a4faa; --indigo-light: #d4daef;
+  --grey: #6b6b6b; --grey-light: #ebe7e1;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--ink); min-height: 100vh; line-height: 1.5;
+}
+button, input { font-family: inherit; }
+.topbar {
+  padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(247,243,238,0.95); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; }
+.brand span { color: var(--amber); }
+.topbar-right { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+.session-tag { font-weight: 700; color: var(--amber-dark); letter-spacing: 0.5px; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+.card { background: var(--card); border: 1.5px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
+h1 { font-family: Georgia, serif; font-size: 26px; margin-bottom: 8px; }
+.sub { font-size: 15px; color: var(--muted); margin-bottom: 20px; }
+label.field-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+input[type=text], input[type=search] {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 16px; color: var(--ink); background: var(--bg); outline: none;
+}
+input:focus { border-color: var(--amber); background: white; }
+#code-input { text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+.btn { border: none; border-radius: 10px; padding: 12px 20px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-primary { background: var(--ink); color: white; width: 100%; margin-top: 14px; }
+.btn-primary:hover { background: var(--amber-dark); }
+.btn-primary:disabled { opacity: 0.6; cursor: default; }
+.btn-small { background: white; color: var(--ink); border: 1.5px solid var(--border); padding: 8px 14px; font-size: 13px; }
+.btn-small:hover { border-color: var(--ink); }
+.btn-link { background: none; border: none; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.error { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--rose-light); color: #8f2626; font-size: 14px; }
+.error.show { display: block; }
+.note { font-size: 13px; color: var(--muted); margin-top: 16px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { flex: 1; padding: 11px; border-radius: 10px; border: 1.5px solid var(--border); background: white; font-weight: 700; font-size: 14px; color: var(--muted); cursor: pointer; }
+.tab.active { background: var(--ink); border-color: var(--ink); color: white; }
+.round-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--amber-dark); background: var(--amber-light); padding: 3px 9px; border-radius: 20px; margin-bottom: 8px; }
+.idea-title { font-family: Georgia, serif; font-size: 20px; margin-bottom: 6px; }
+.idea-desc { font-size: 15px; color: #40382f; margin-bottom: 14px; white-space: pre-line; }
+.contrib { border-top: 1px solid var(--border); padding: 10px 0 2px; font-size: 14px; }
+.contrib-name { font-weight: 700; }
+.contrib-skill { color: #40382f; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 4px; white-space: nowrap; }
+.pill-teach_now { background: var(--amber-light); color: var(--amber-dark); }
+.pill-teach_prep { background: var(--teal-light); color: #1d5c59; }
+.pill-elder { background: var(--rose-light); color: #8f2626; }
+.pill-childhood { background: var(--indigo-light); color: #2b3a85; }
+.pill-wildcard { background: var(--grey-light); color: var(--grey); }
+a.email { color: var(--teal); font-weight: 600; word-break: break-all; }
+.no-email { color: var(--muted); font-style: italic; }
+.card-actions { margin-top: 12px; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; align-items: center; }
+.toolbar .status { font-size: 13px; color: var(--teal); font-weight: 600; }
+.person-name { font-family: Georgia, serif; font-size: 18px; }
+.person-email { font-size: 14px; margin-bottom: 10px; }
+.skill-group { margin-top: 8px; }
+.skill-group-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 3px; }
+.skill-line { font-size: 14px; padding: 5px 10px; border-radius: 8px; margin-bottom: 3px; }
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 15px; }
+[hidden] { display: none !important; }
+@media print {
+  .topbar, .tabs, .toolbar, .card-actions, #people-search-wrap { display: none !important; }
+  .card { break-inside: avoid; border-color: #999; }
+  body { background: white; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">3C <span>Teacher Portal</span></div>
+  <div class="topbar-right" id="topbar-right" hidden>
+    <span>Session <span class="session-tag" id="session-tag"></span></span>
+    <button class="btn-link" id="signout-btn">Sign out</button>
+  </div>
+</div>
+
+<!-- ══════════ SIGN IN ══════════ -->
+<div class="wrap" id="view-login">
+  <div class="card" style="margin-top:28px;">
+    <h1>Your session, your community</h1>
+    <p class="sub">Enter your session code to see the class ideas from your Spark Round and how to reach the people who came up with them.</p>
+    <label class="field-label" for="code-input">Session code</label>
+    <input type="text" id="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. JEFFERSON-FALL">
+    <button class="btn btn-primary" id="signin-btn">Open my session →</button>
+    <div class="error" id="login-error"></div>
+    <p class="note"><a class="email" href="./">← Back to the Spark Library</a></p>
+    <p class="note">Your session code came from the facilitator who ran your workshop. This page shows contact information that families and community members shared for classroom follow-up, so please keep it to that use.</p>
+  </div>
+</div>
+
+<!-- ══════════ PORTAL ══════════ -->
+<div class="wrap" id="view-portal" hidden>
+  <div class="tabs">
+    <button class="tab active" data-tab="ideas" id="tab-ideas">Class ideas</button>
+    <button class="tab" data-tab="people" id="tab-people">People</button>
+  </div>
+
+  <div id="panel-ideas"></div>
+
+  <div id="panel-people" hidden>
+    <div id="people-search-wrap">
+      <label class="field-label" for="people-search">Find a person or a skill</label>
+      <input type="search" id="people-search" placeholder="e.g. gardening, Maria, music…">
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-small" id="copy-emails-btn">Copy all emails</button>
+      <button class="btn btn-small" id="email-all-btn">Email everyone (BCC)</button>
+      <button class="btn btn-small" id="print-btn">Print</button>
+      <span class="status" id="toolbar-status"></span>
+    </div>
+    <div id="people-list"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════
+   This is the same Google Apps Script address the workshop app uses.
+   If you ever redeploy that script under a new address, change it here too.
+════════════════════════════════ */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzwz2aeuGxvLz0TAfT4_s0cmPazlAiTaMH9AdKALytqDnXKquVjVeWANnfIQ0_QWwtR/exec";
+
+const REMEMBER_KEY = '3c-teacher-session';
+let SESSION = '';
+let PEOPLE = [];
+let IDEAS = [];
+
+const CATS = {
+  teach_now:  { label: 'Teach Right Now',     color: 'var(--amber-dark)', bg: 'var(--amber-light)' },
+  teach_prep: { label: 'Teach with Prep',     color: '#1d5c59',           bg: 'var(--teal-light)' },
+  elder:      { label: 'Ancestral Knowledge', color: '#8f2626',           bg: 'var(--rose-light)' },
+  childhood:  { label: 'Childhood Passions',  color: '#2b3a85',           bg: 'var(--indigo-light)' },
+  wildcard:   { label: 'Wild Card',           color: 'var(--grey)',       bg: 'var(--grey-light)' }
+};
+const CAT_ORDER = ['teach_now', 'teach_prep', 'elder', 'childhood', 'wildcard'];
+
+/* Everything a person typed is escaped before it goes onto the page */
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const $ = id => document.getElementById(id);
+const norm = v => String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' ');
+const normalizeCode = v => String(v || '').trim().toUpperCase().replace(/\s+/g, '-');
+const isEmail = v => /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/.test(String(v || '').trim());
+const mailAddr = v => encodeURIComponent(String(v).trim()).replace(/%40/g, '@');
+
+function normalizeCat(raw) {
+  const r = norm(raw);
+  if (CATS[r]) return r;
+  if (r.includes('prep')) return 'teach_prep';
+  if (r.includes('elder') || r.includes('ancest')) return 'elder';
+  if (r.includes('child')) return 'childhood';
+  if (r.includes('wild')) return 'wildcard';
+  return 'teach_now';
+}
+
+/* ════════════════════════════════
+   SIGN IN
+════════════════════════════════ */
+function showLoginError(msg) {
+  const el = $('login-error');
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
+async function signIn(codeFromMemory) {
+  const code = normalizeCode(codeFromMemory || $('code-input').value);
+  showLoginError('');
+  if (!code) { showLoginError('Please enter your session code.'); return; }
+
+  const btn = $('signin-btn');
+  btn.disabled = true; btn.textContent = 'Opening…';
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getSessionData&session=' + encodeURIComponent(code));
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch (e) { throw new Error('unreadable'); }
+    if (data.status !== 'ok') throw new Error('unreadable');
+
+    const people = cleanPeople(data.participants);
+    const ideas = cleanIdeas(data.sessions);
+    if (people.length === 0 && ideas.length === 0) {
+      forget();
+      showLoginError('We couldn\'t find a session with that code. Check the spelling, or ask your facilitator for the exact code.');
+      return;
+    }
+    SESSION = code; PEOPLE = people; IDEAS = ideas;
+    remember(code);
+    showPortal();
+  } catch (e) {
+    showLoginError('We couldn\'t reach the session database just now. Please check your connection and try again in a minute.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Open my session →';
+  }
+}
+
+/* Stays signed in until the tab is closed or "Sign out" is clicked */
+function remember(code) { try { sessionStorage.setItem(REMEMBER_KEY, code); } catch (e) {} }
+function forget() { try { sessionStorage.removeItem(REMEMBER_KEY); } catch (e) {} }
+function remembered() { try { return sessionStorage.getItem(REMEMBER_KEY) || ''; } catch (e) { return ''; } }
+
+function signOut() {
+  forget();
+  SESSION = ''; PEOPLE = []; IDEAS = [];
+  $('panel-ideas').innerHTML = ''; $('people-list').innerHTML = '';
+  $('code-input').value = ''; $('people-search').value = '';
+  $('view-portal').hidden = true; $('topbar-right').hidden = true;
+  $('view-login').hidden = false;
+}
+
+/* ════════════════════════════════
+   TIDY THE DATA FROM THE SHEET
+════════════════════════════════ */
+function cleanPeople(list) {
+  const seen = new Set(), out = [];
+  (Array.isArray(list) ? list : []).forEach(p => {
+    if (!p || !String(p.name || '').trim()) return;
+    const name = String(p.name).trim(), email = String(p.email || '').trim();
+    const key = norm(name) + '|' + norm(email);
+    if (seen.has(key)) return;
+    seen.add(key);
+    const skills = (Array.isArray(p.skills) ? p.skills : [])
+      .filter(s => s && String(s.description || '').trim())
+      .map(s => ({ category: normalizeCat(s.category), description: String(s.description).trim() }));
+    out.push({ name, email, skills });
+  });
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function cleanIdeas(list) {
+  const seen = new Set(), out = [];
+  (Array.isArray(list) ? list : []).forEach(s => {
+    if (!s || !String(s.class_name || '').trim()) return;
+    const round = parseInt(s.round, 10) || 0;
+    const key = round + '|' + norm(s.class_name) + '|' + [norm(s.p1_name), norm(s.p2_name)].sort().join('+');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      round,
+      class_name: String(s.class_name).trim(),
+      class_desc: String(s.class_desc || '').trim(),
+      partners: [
+        { name: String(s.p1_name || '').trim(), skill: String(s.p1_skill || '').trim(), category: normalizeCat(s.p1_category) },
+        { name: String(s.p2_name || '').trim(), skill: String(s.p2_skill || '').trim(), category: normalizeCat(s.p2_category) }
+      ].filter(p => p.name)
+    });
+  });
+  return out.sort((a, b) => a.round - b.round || a.class_name.localeCompare(b.class_name));
+}
+
+/* Class ideas are recorded by name, so that is how we look up an email */
+function emailsFor(name) {
+  const found = PEOPLE.filter(p => norm(p.name) === norm(name) && isEmail(p.email)).map(p => p.email);
+  return [...new Set(found)];
+}
+
+/* ════════════════════════════════
+   SHOW THE PORTAL
+════════════════════════════════ */
+function showPortal() {
+  $('session-tag').textContent = SESSION;
+  $('topbar-right').hidden = false;
+  $('view-login').hidden = true;
+  $('view-portal').hidden = false;
+  $('tab-ideas').textContent = `Class ideas (${IDEAS.length})`;
+  $('tab-people').textContent = `People (${PEOPLE.length})`;
+  renderIdeas();
+  renderPeople();
+  showTab('ideas');
+  window.scrollTo(0, 0);
+}
+
+function showTab(tab) {
+  ['ideas', 'people'].forEach(t => {
+    $('tab-' + t).classList.toggle('active', t === tab);
+    $('panel-' + t).hidden = t !== tab;
+  });
+}
+
+function emailHtml(emails, subject) {
+  if (emails.length === 0) return '<span class="no-email">No email on file</span>';
+  const link = e => `<a class="email" href="mailto:${mailAddr(e)}${subject ? '?subject=' + encodeURIComponent(subject) : ''}">${esc(e)}</a>`;
+  const note = emails.length > 1 ? ' <span class="no-email">(more than one person registered with this name)</span>' : '';
+  return emails.map(link).join(', ') + note;
+}
+
+function renderIdeas() {
+  const el = $('panel-ideas');
+  if (IDEAS.length === 0) {
+    el.innerHTML = '<div class="card empty">No class ideas have been saved for this session yet.</div>';
+    return;
+  }
+  el.innerHTML = IDEAS.map(idea => {
+    const subject = 'Your class idea: ' + idea.class_name;
+    const all = [...new Set(idea.partners.flatMap(p => emailsFor(p.name)))];
+    const both = idea.partners.filter(p => emailsFor(p.name).length > 0).length > 1
+      ? `<div class="card-actions"><a class="btn btn-small" style="text-decoration:none;display:inline-block;" href="mailto:${all.map(mailAddr).join(',')}?subject=${encodeURIComponent(subject)}">Email both contributors</a></div>`
+      : '';
+    return `<div class="card">
+      ${idea.round ? `<div class="round-tag">Spark Round ${esc(idea.round)}</div>` : ''}
+      <div class="idea-title">${esc(idea.class_name)}</div>
+      ${idea.class_desc ? `<div class="idea-desc">${esc(idea.class_desc)}</div>` : ''}
+      ${idea.partners.map(p => `<div class="contrib">
+        <span class="contrib-name">${esc(p.name)}</span>
+        ${p.skill ? `<span class="contrib-skill"> · ${esc(p.skill)}</span><span class="pill pill-${p.category}">${esc(CATS[p.category].label)}</span>` : ''}
+        <div>${emailHtml(emailsFor(p.name), subject)}</div>
+      </div>`).join('')}
+      ${both}
+    </div>`;
+  }).join('');
+}
+
+function renderPeople() {
+  const q = norm($('people-search').value);
+  const el = $('people-list');
+  if (PEOPLE.length === 0) {
+    el.innerHTML = '<div class="card empty">No one has registered for this session yet.</div>';
+    return;
+  }
+  const shown = PEOPLE.filter(p => !q ||
+    norm(p.name).includes(q) || p.skills.some(s => norm(s.description).includes(q)));
+  if (shown.length === 0) {
+    el.innerHTML = '<div class="card empty">No one matches that search.</div>';
+    return;
+  }
+  el.innerHTML = shown.map(p => {
+    const groups = CAT_ORDER.map(cat => {
+      const mine = p.skills.filter(s => s.category === cat);
+      if (mine.length === 0) return '';
+      const c = CATS[cat];
+      return `<div class="skill-group">
+        <div class="skill-group-label" style="color:${c.color}">${esc(c.label)}</div>
+        ${mine.map(s => `<div class="skill-line" style="background:${c.bg}">${esc(s.description)}</div>`).join('')}
+      </div>`;
+    }).join('');
+    return `<div class="card">
+      <div class="person-name">${esc(p.name)}</div>
+      <div class="person-email">${emailHtml(isEmail(p.email) ? [p.email] : [], '')}</div>
+      ${groups}
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════
+   CONTACT TOOLS
+════════════════════════════════ */
+function allEmails() {
+  return [...new Set(PEOPLE.filter(p => isEmail(p.email)).map(p => p.email.trim()))];
+}
+
+function flash(msg) {
+  const el = $('toolbar-status');
+  el.textContent = msg;
+  clearTimeout(flash.timer);
+  flash.timer = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+async function copyEmails() {
+  const list = allEmails();
+  if (list.length === 0) { flash('No emails on file for this session.'); return; }
+  const text = list.join(', ');
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // Older browsers: copy through a temporary text box
+    const box = document.createElement('textarea');
+    box.value = text; box.style.position = 'fixed'; box.style.opacity = '0';
+    document.body.appendChild(box); box.select();
+    try { document.execCommand('copy'); } catch (e2) {}
+    box.remove();
+  }
+  flash(`✓ Copied ${list.length} email${list.length !== 1 ? 's' : ''}. Paste them into the BCC line.`);
+}
+
+/* Addresses go in BCC so families don't see each other's emails */
+function emailEveryone() {
+  const list = allEmails();
+  if (list.length === 0) { flash('No emails on file for this session.'); return; }
+  const url = 'mailto:?bcc=' + list.map(mailAddr).join(',') + '&subject=' + encodeURIComponent('Following up from our Spark Round');
+  if (url.length > 1800) {
+    copyEmails().then(() => flash(`This group is too large to open in one click. ✓ Copied ${list.length} emails — paste them into the BCC line.`));
+    return;
+  }
+  window.location.href = url;
+}
+
+/* ════════════════════════════════
+   WIRING
+════════════════════════════════ */
+$('signin-btn').addEventListener('click', () => signIn());
+$('code-input').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
+$('signout-btn').addEventListener('click', signOut);
+$('tab-ideas').addEventListener('click', () => showTab('ideas'));
+$('tab-people').addEventListener('click', () => showTab('people'));
+$('people-search').addEventListener('input', renderPeople);
+$('copy-emails-btn').addEventListener('click', copyEmails);
+$('email-all-btn').addEventListener('click', emailEveryone);
+$('print-btn').addEventListener('click', () => window.print());
+
+// Reopen the session after a page refresh
+if (remembered()) signIn(remembered());
+</script>
+</body>
+</html>

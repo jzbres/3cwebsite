@@ -64,6 +64,11 @@ body {
 }
 .nav-logo span { color: var(--amber); }
 .nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-link {
+  font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none; white-space: nowrap;
+  padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: white;
+}
+.nav-link:hover { border-color: var(--amber); color: var(--amber); }
 /* ── MAIN LAYOUT ── */
 .main-wrap {
   max-width: 1100px;
@@ -718,6 +723,9 @@ body {
 <div class="screen active" id="screen-app">
   <nav class="topnav">
     <span class="nav-logo">Spark <span>Library</span></span>
+    <div class="nav-right">
+      <a class="nav-link" href="teachers.html">Teacher Portal →</a>
+    </div>
   </nav>
 
   <div class="main-wrap">
