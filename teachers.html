@@ -67,7 +67,7 @@ input:focus { border-color: var(--amber); background: white; }
 .pill-wildcard { background: var(--grey-light); color: var(--grey); }
 a.email { color: var(--teal); font-weight: 600; word-break: break-all; }
 .no-email { color: var(--muted); font-style: italic; }
-.card-actions { margin-top: 12px; }
+.card-actions { margin-top: 14px; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; align-items: center; }
 .toolbar .status { font-size: 13px; color: var(--teal); font-weight: 600; }
 .person-name { font-family: Georgia, serif; font-size: 18px; }
@@ -76,9 +76,45 @@ a.email { color: var(--teal); font-weight: 600; word-break: break-all; }
 .skill-group-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 3px; }
 .skill-line { font-size: 14px; padding: 5px 10px; border-radius: 8px; margin-bottom: 3px; }
 .empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 15px; }
+.btn-build { background: var(--amber); color: white; border: none; padding: 9px 16px; font-size: 14px; margin-right: 6px; }
+.btn-build:hover { background: var(--amber-dark); }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,22,18,0.55); z-index: 100; overflow-y: auto; padding: 24px 12px; }
+.modal-overlay.open { display: block; }
+.modal { position: relative; background: var(--card); border-radius: 16px; max-width: 700px; margin: 0 auto; padding: 28px 24px; }
+.modal-close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); background: white; font-size: 14px; cursor: pointer; }
+.modal-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--amber-dark); margin-bottom: 6px; }
+.modal-title { font-family: Georgia, serif; font-size: 24px; margin-bottom: 8px; padding-right: 36px; }
+.builder-field { margin-bottom: 18px; }
+.builder-label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.builder-hint { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.builder-input, .builder-textarea {
+  width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 10px;
+  font-family: inherit; font-size: 15px; color: var(--ink); background: var(--bg); outline: none;
+}
+.builder-textarea { resize: vertical; }
+.builder-input:focus, .builder-textarea:focus { border-color: var(--amber); background: white; }
+.duration-options, .check-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.duration-btn { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: white; font-size: 14px; color: var(--muted); cursor: pointer; }
+.duration-btn.selected { background: var(--amber-light); border-color: var(--amber); color: var(--amber-dark); font-weight: 700; }
+.check-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: white; font-size: 14px; cursor: pointer; }
+.check-chip input { width: 16px; height: 16px; margin: 0; accent-color: var(--amber); cursor: pointer; }
+.check-chip:has(input:checked) { background: var(--amber-light); border-color: var(--amber); font-weight: 700; }
+.builder-error { color: #8f2626; font-size: 14px; font-weight: 600; margin-bottom: 10px; min-height: 4px; }
+.builder-spinner { width: 42px; height: 42px; margin: 0 auto; border: 4px solid var(--amber-light); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.lesson-plan-output { background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 20px; font-size: 15px; line-height: 1.6; }
+.lesson-plan-output h1, .lesson-plan-output h2, .lesson-plan-output h3 { font-family: Georgia, serif; margin: 16px 0 8px; }
+.lesson-plan-output h1 { font-size: 20px; margin-top: 0; }
+.lesson-plan-output h2 { font-size: 17px; border-bottom: 1.5px solid var(--border); padding-bottom: 6px; }
+.lesson-plan-output h3 { font-size: 15px; color: var(--amber-dark); }
+.lesson-plan-output ul, .lesson-plan-output ol { padding-left: 20px; margin: 8px 0; }
+.lesson-plan-output li { margin-bottom: 4px; }
+.lesson-plan-output p { margin-bottom: 10px; }
+.lesson-plan-output hr { border: none; border-top: 1.5px solid var(--border); margin: 16px 0; }
 [hidden] { display: none !important; }
 @media print {
-  .topbar, .tabs, .toolbar, .card-actions, #people-search-wrap { display: none !important; }
+  .topbar, .tabs, .toolbar, .card-actions, #people-search-wrap, .modal-overlay { display: none !important; }
   .card { break-inside: avoid; border-color: #999; }
   body { background: white; }
 }
@@ -132,12 +168,104 @@ a.email { color: var(--teal); font-weight: 600; word-break: break-all; }
   </div>
 </div>
 
+<!-- ══════════ LESSON BUILDER ══════════ -->
+<div class="modal-overlay" id="builder-modal">
+  <div class="modal">
+    <button class="modal-close" id="builder-close-x" aria-label="Close">✕</button>
+
+    <div id="builder-step-form">
+      <div class="modal-eyebrow">✦ AI Lesson Builder</div>
+      <h2 class="modal-title" id="builder-lesson-name"></h2>
+      <p class="builder-hint" style="font-size:14px;margin-bottom:22px;">Answer a few quick questions and Claude will draft a full lesson plan tailored to your classroom.</p>
+
+      <div class="builder-field">
+        <label class="builder-label">How long should the lesson take? *</label>
+        <div class="duration-options">
+          <button class="duration-btn" data-duration="30 minutes">30 min</button>
+          <button class="duration-btn" data-duration="45 minutes">45 min</button>
+          <button class="duration-btn" data-duration="60 minutes">60 min</button>
+          <button class="duration-btn" data-duration="90 minutes">90 min</button>
+          <button class="duration-btn" data-duration="2 hours">2 hours</button>
+        </div>
+        <input type="text" class="builder-input" id="builder-duration-custom" placeholder="Or type a custom duration…" />
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label">What grade level is this for?</label>
+        <p class="builder-hint">Check one or more.</p>
+        <div class="check-options">
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="K"> K</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="1"> 1st</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="2"> 2nd</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="3"> 3rd</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="4"> 4th</label>
+          <label class="check-chip"><input type="checkbox" class="builder-grade" value="5"> 5th</label>
+        </div>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label" for="builder-materials">What materials do you want created?</label>
+        <p class="builder-hint">e.g. a vocabulary worksheet, flashcards, a word search, a crossword puzzle. Claude will write these out after the lesson plan.</p>
+        <textarea class="builder-textarea" id="builder-materials" rows="2" maxlength="600" placeholder="Optional — list the student materials you'd like…"></textarea>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label" for="builder-differentiate">Who do you need to differentiate for?</label>
+        <p class="builder-hint">e.g. English language learners, students reading below grade level, advanced learners, students who need movement breaks. Describe needs, not names.</p>
+        <textarea class="builder-textarea" id="builder-differentiate" rows="2" maxlength="600" placeholder="Optional — describe the learners you're planning for…"></textarea>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label" for="builder-standards">What standards are you hoping to meet?</label>
+        <p class="builder-hint">e.g. CCSS.ELA-LITERACY.W.5.1, NGSS 3-LS1-1, or just describe the learning goals in your own words.</p>
+        <textarea class="builder-textarea" id="builder-standards" rows="3" placeholder="Paste standards codes or describe what students should know and be able to do…"></textarea>
+      </div>
+
+      <div class="builder-field">
+        <label class="builder-label" for="builder-notes">Any other notes for Claude?</label>
+        <p class="builder-hint">Class size, materials you have on hand, accessibility needs, student interests, etc.</p>
+        <textarea class="builder-textarea" id="builder-notes" rows="2" placeholder="Optional — any context that would help Claude tailor the plan…"></textarea>
+      </div>
+
+      <div class="builder-error" id="builder-error"></div>
+      <div class="card-actions" style="margin-top:4px;">
+        <button class="btn btn-build" id="builder-submit" style="padding:12px 20px;font-size:15px;">✦ Generate Lesson Plan</button>
+        <button class="btn btn-small" id="builder-cancel" style="padding:12px 20px;">Cancel</button>
+      </div>
+    </div>
+
+    <div id="builder-step-loading" style="display:none;text-align:center;padding:60px 20px;">
+      <div class="builder-spinner"></div>
+      <div style="font-family:Georgia,serif;font-size:20px;margin:20px 0 8px;">Drafting your lesson plan…</div>
+      <div class="builder-hint" style="font-size:14px;">Claude is weaving together community knowledge<br>and your classroom context. This can take up to a minute.</div>
+    </div>
+
+    <div id="builder-step-result" style="display:none;">
+      <div class="modal-eyebrow">✦ Lesson Plan Draft</div>
+      <h2 class="modal-title" id="builder-result-title"></h2>
+      <div class="card-actions" style="margin:10px 0 18px;">
+        <button class="btn btn-small" id="builder-download">⬇ Download</button>
+        <button class="btn btn-small" id="builder-print">Print</button>
+        <button class="btn btn-small" id="copy-btn">Copy</button>
+        <button class="btn btn-small" id="builder-regen">← Edit &amp; Regenerate</button>
+      </div>
+      <div class="lesson-plan-output" id="lesson-plan-output"></div>
+      <div class="card-actions" style="margin-top:18px;">
+        <button class="btn btn-small" id="builder-close" style="padding:12px 20px;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ════════════════════════════════
    This is the same Google Apps Script address the workshop app uses.
    If you ever redeploy that script under a new address, change it here too.
 ════════════════════════════════ */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzwz2aeuGxvLz0TAfT4_s0cmPazlAiTaMH9AdKALytqDnXKquVjVeWANnfIQ0_QWwtR/exec";
+
+/* The lesson-builder script — the same one the Spark Library uses */
+const LESSON_BUILDER_URL = 'https://script.google.com/macros/s/AKfycbyPETuawY7oZ_51H3rkBgBsjFAOdE0ElQyTCYXDz1O-yW2GbzV8A4m1KBkWRLNp6-ES/exec';
 
 const REMEMBER_KEY = '3c-teacher-session';
 let SESSION = '';
@@ -224,6 +352,7 @@ function signOut() {
   SESSION = ''; PEOPLE = []; IDEAS = [];
   $('panel-ideas').innerHTML = ''; $('people-list').innerHTML = '';
   $('code-input').value = ''; $('people-search').value = '';
+  closeBuilder(); builderIdea = null;
   $('view-portal').hidden = true; $('topbar-right').hidden = true;
   $('view-login').hidden = false;
 }
@@ -310,11 +439,11 @@ function renderIdeas() {
     el.innerHTML = '<div class="card empty">No class ideas have been saved for this session yet.</div>';
     return;
   }
-  el.innerHTML = IDEAS.map(idea => {
+  el.innerHTML = IDEAS.map((idea, i) => {
     const subject = 'Your class idea: ' + idea.class_name;
     const all = [...new Set(idea.partners.flatMap(p => emailsFor(p.name)))];
     const both = idea.partners.filter(p => emailsFor(p.name).length > 0).length > 1
-      ? `<div class="card-actions"><a class="btn btn-small" style="text-decoration:none;display:inline-block;" href="mailto:${all.map(mailAddr).join(',')}?subject=${encodeURIComponent(subject)}">Email both contributors</a></div>`
+      ? `<a class="btn btn-small" style="text-decoration:none;display:inline-block;" href="mailto:${all.map(mailAddr).join(',')}?subject=${encodeURIComponent(subject)}">Email both contributors</a>`
       : '';
     return `<div class="card">
       ${idea.round ? `<div class="round-tag">Spark Round ${esc(idea.round)}</div>` : ''}
@@ -325,7 +454,10 @@ function renderIdeas() {
         ${p.skill ? `<span class="contrib-skill"> · ${esc(p.skill)}</span><span class="pill pill-${p.category}">${esc(CATS[p.category].label)}</span>` : ''}
         <div>${emailHtml(emailsFor(p.name), subject)}</div>
       </div>`).join('')}
-      ${both}
+      <div class="card-actions">
+        <button class="btn btn-build" data-build="${i}">✦ Build this lesson</button>
+        ${both}
+      </div>
     </div>`;
   }).join('');
 }
@@ -405,8 +537,186 @@ function emailEveryone() {
 }
 
 /* ════════════════════════════════
+   LESSON BUILDER — works the same way as in the Spark Library
+════════════════════════════════ */
+let builderIdea = null;
+let selectedDuration = '';
+
+/* "Maria Elena Gonzalez" → "Maria G." — full names stay in this portal and are not sent to the AI */
+function shortName(full) {
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+  while (parts.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(parts[parts.length - 1])) parts.pop();
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  const initial = parts[parts.length - 1].replace(/[^\p{L}]/gu, '').charAt(0).toUpperCase();
+  return initial ? `${parts[0]} ${initial}.` : parts[0];
+}
+
+function openLessonBuilder(idea) {
+  if (!idea) return;
+  builderIdea = idea;
+  $('builder-lesson-name').textContent = idea.class_name;
+  $('builder-result-title').textContent = idea.class_name;
+  selectedDuration = '';
+  document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
+  ['builder-duration-custom', 'builder-standards', 'builder-notes', 'builder-materials', 'builder-differentiate']
+    .forEach(id => { $(id).value = ''; });
+  document.querySelectorAll('.builder-grade').forEach(c => { c.checked = false; });
+  $('lesson-plan-output').innerHTML = '';
+  showBuilderForm();
+  $('builder-modal').classList.add('open');
+  $('builder-modal').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBuilder() {
+  $('builder-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function showBuilderStep(step) {
+  ['form', 'loading', 'result'].forEach(s => { $('builder-step-' + s).style.display = s === step ? 'block' : 'none'; });
+  $('builder-modal').scrollTop = 0;
+}
+function showBuilderForm() { showBuilderStep('form'); $('builder-error').textContent = ''; }
+
+async function generateLessonPlan() {
+  const duration = selectedDuration || $('builder-duration-custom').value.trim();
+  const errEl = $('builder-error');
+  if (!duration) { errEl.textContent = 'Please select or enter a lesson duration.'; return; }
+  if (!LESSON_BUILDER_URL) { errEl.textContent = 'The lesson builder is not set up yet.'; return; }
+  const idea = builderIdea;
+  if (!idea) return;
+  errEl.textContent = '';
+  showBuilderStep('loading');
+
+  const p1 = idea.partners[0] || {}, p2 = idea.partners[1] || {};
+  try {
+    const response = await fetch(LESSON_BUILDER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'lessonPlan',
+        lesson: {
+          class_name: idea.class_name, class_desc: idea.class_desc, grade: '', subject: '',
+          p1_name: shortName(p1.name), p1_skill: p1.skill || '', p1_category: p1.category || 'teach_now',
+          p2_name: shortName(p2.name), p2_skill: p2.skill || '', p2_category: p2.category || 'teach_now'
+        },
+        duration,
+        standards: $('builder-standards').value.trim(),
+        notes: $('builder-notes').value.trim(),
+        grades: [...document.querySelectorAll('.builder-grade:checked')].map(c => c.value),
+        materials: $('builder-materials').value.trim(),
+        differentiate: $('builder-differentiate').value.trim()
+      })
+    });
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (parseErr) { throw new Error('The lesson builder did not answer properly. Please try again in a minute.'); }
+    if (data.status !== 'ok' || !data.text) throw new Error(data.message || 'Something went wrong generating the lesson plan. Please try again.');
+    $('lesson-plan-output').innerHTML = renderMarkdown(data.text);
+    showBuilderStep('result');
+  } catch (err) {
+    showBuilderStep('form');
+    errEl.textContent = (err && err.message && !/fetch|network/i.test(err.message)) ? err.message
+      : 'Could not reach the lesson builder. Please check your connection and try again.';
+  }
+}
+
+function renderMarkdown(text) {
+  const inline = t => esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>');
+  const out = [];
+  let list = null, para = [];
+  const closePara = () => { if (para.length) { out.push('<p>' + para.join('<br>') + '</p>'); para = []; } };
+  const closeList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+  const openList = kind => { closePara(); if (list !== kind) { closeList(); out.push('<' + kind + '>'); list = kind; } };
+  String(text || '').split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    let m;
+    if (!line) { closePara(); closeList(); }
+    else if ((m = line.match(/^(#{1,3})\s+(.+)$/))) { closePara(); closeList(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+    else if (/^(-{3,}|\*{3,})$/.test(line)) { closePara(); closeList(); out.push('<hr>'); }
+    else if ((m = line.match(/^[-•*]\s+(.+)$/))) { openList('ul'); out.push('<li>' + inline(m[1]) + '</li>'); }
+    else if ((m = line.match(/^\d+[.)]\s+(.+)$/))) { openList('ol'); out.push('<li>' + inline(m[1]) + '</li>'); }
+    else { closeList(); para.push(inline(line)); }
+  });
+  closePara(); closeList();
+  return out.join('\n');
+}
+
+/* The plan as a stand-alone document, used for both download and print */
+function lessonPlanDocument() {
+  const title = document.getElementById('builder-result-title').textContent.trim() || 'Lesson Plan';
+  const body = document.getElementById('lesson-plan-output').innerHTML;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11.5pt; line-height: 1.45; color: #222; max-width: 7in; margin: 0.5in auto; }
+  h1 { font-size: 20pt; margin: 0 0 12pt; }
+  h2 { font-size: 14pt; margin: 16pt 0 6pt; border-bottom: 1px solid #bbb; padding-bottom: 3pt; }
+  h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+  p { margin: 0 0 8pt; } ul, ol { margin: 4pt 0 8pt; padding-left: 20pt; } li { margin-bottom: 3pt; }
+</style></head><body><h1>${esc(title)}</h1>${body}</body></html>`;
+  return { title, html };
+}
+
+/* Saves the plan as a file that opens in Word, Google Docs or Pages */
+function downloadLessonPlan() {
+  const { title, html } = lessonPlanDocument();
+  const name = (title.replace(/[^\p{L}\p{N} _-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Lesson Plan') + ' - Lesson Plan.doc';
+  const url = URL.createObjectURL(new Blob(['\ufeff', html], { type: 'application/msword' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* Opens just the plan in a new tab and brings up the print window (which can also save a PDF) */
+function printLessonPlan() {
+  const { html } = lessonPlanDocument();
+  const w = window.open('', '_blank');
+  if (!w) { alert('Your browser blocked the print window. Please allow pop-ups for this page and try again.'); return; }
+  w.document.write(html); w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+}
+
+function copyLessonPlan() {
+  const text = document.getElementById('lesson-plan-output').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2500);
+  });
+}
+
+/* ════════════════════════════════
    WIRING
 ════════════════════════════════ */
+$('panel-ideas').addEventListener('click', e => {
+  const btn = e.target.closest('[data-build]');
+  if (btn) openLessonBuilder(IDEAS[Number(btn.dataset.build)]);
+});
+document.querySelectorAll('.duration-btn').forEach(b => b.addEventListener('click', () => {
+  selectedDuration = b.dataset.duration;
+  document.querySelectorAll('.duration-btn').forEach(x => x.classList.toggle('selected', x === b));
+  $('builder-duration-custom').value = '';
+}));
+$('builder-duration-custom').addEventListener('input', () => {
+  selectedDuration = '';
+  document.querySelectorAll('.duration-btn').forEach(x => x.classList.remove('selected'));
+});
+$('builder-submit').addEventListener('click', generateLessonPlan);
+['builder-cancel', 'builder-close', 'builder-close-x'].forEach(id => $(id).addEventListener('click', closeBuilder));
+$('builder-modal').addEventListener('click', e => { if (e.target === $('builder-modal')) closeBuilder(); });
+$('builder-download').addEventListener('click', downloadLessonPlan);
+$('builder-print').addEventListener('click', printLessonPlan);
+$('copy-btn').addEventListener('click', copyLessonPlan);
+$('builder-regen').addEventListener('click', showBuilderForm);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBuilder(); });
+
 $('signin-btn').addEventListener('click', () => signIn());
 $('code-input').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
 $('signout-btn').addEventListener('click', signOut);
